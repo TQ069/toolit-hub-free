@@ -9,6 +9,8 @@ export default function QrGenerator() {
   const [text, setText] = useState('');
   const [size, setSize] = useState(256);
   const [qrDataUrl, setQrDataUrl] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -20,18 +22,27 @@ export default function QrGenerator() {
   };
 
   useEffect(() => {
-    if (text && canvasRef.current) {
+    if (text.trim()) {
       generateQRCode(text, size);
+    } else {
+      setQrDataUrl('');
+      setError('');
     }
   }, [text, size]);
 
-  const generateQRCode = async (data: string, qrSize: number) => {
+  const generateQRCode = (data: string, qrSize: number) => {
     try {
+      setIsLoading(true);
+      setError('');
       // Use a QR code API service
       const apiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=${qrSize}x${qrSize}&data=${encodeURIComponent(data)}&format=png`;
       setQrDataUrl(apiUrl);
-    } catch (error) {
-      console.error('Error generating QR code:', error);
+      setIsLoading(false);
+    } catch (err) {
+      console.error('Error generating QR code:', err);
+      setError('Failed to generate QR code. Please try again.');
+      setQrDataUrl('');
+      setIsLoading(false);
     }
   };
 
@@ -90,8 +101,22 @@ export default function QrGenerator() {
             />
           </div>
 
+          {/* Error Message */}
+          {error && (
+            <div className="p-4 bg-destructive/10 text-destructive rounded-lg">
+              <p className="text-sm">{error}</p>
+            </div>
+          )}
+
+          {/* Loading State */}
+          {isLoading && text && (
+            <div className="text-center py-8 sm:py-12 text-muted-foreground">
+              <p className="text-base sm:text-lg">Generating QR code...</p>
+            </div>
+          )}
+
           {/* QR Code Preview */}
-          {text && qrDataUrl && (
+          {text && qrDataUrl && !isLoading && (
             <div className="space-y-4">
               <Label>QR Code Preview</Label>
               <div className="flex flex-col items-center space-y-4">
@@ -102,6 +127,7 @@ export default function QrGenerator() {
                     width={size}
                     height={size}
                     className="block max-w-full h-auto"
+                    onError={() => setError('Failed to load QR code image')}
                   />
                   <canvas ref={canvasRef} style={{ display: 'none' }} aria-hidden="true" />
                 </div>
@@ -116,7 +142,7 @@ export default function QrGenerator() {
             </div>
           )}
 
-          {!text && (
+          {!text && !isLoading && (
             <div className="text-center py-8 sm:py-12 text-muted-foreground">
               <p className="text-base sm:text-lg">Enter text or URL above to generate QR code</p>
             </div>
